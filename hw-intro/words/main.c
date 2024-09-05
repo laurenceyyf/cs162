@@ -197,12 +197,12 @@ int main (int argc, char *argv[]) {
     // found at argv[argc-1].
     for (int i = optind; i < argc; i++) {
       infile = fopen(argv[i], "r");
-      fclose(infile);
       if (count_mode) {
         total_words += num_words(infile);
       } else {
         count_words(&word_counts, infile);
       }
+      fclose(infile);
     }
   }
 
