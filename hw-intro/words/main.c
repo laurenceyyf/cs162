@@ -197,6 +197,9 @@ int main (int argc, char *argv[]) {
     // found at argv[argc-1].
     for (int i = optind; i < argc; i++) {
       infile = fopen(argv[i], "r");
+      if (infile == NULL) {
+        return 1;
+      }
       if (count_mode) {
         total_words += num_words(infile);
       } else {
@@ -210,7 +213,6 @@ int main (int argc, char *argv[]) {
     printf("The total number of words is: %i\n", total_words);
   } else {
     wordcount_sort(&word_counts, wordcount_less);
-
     printf("The frequencies of each word are: \n");
     fprint_words(word_counts, stdout);
 }
