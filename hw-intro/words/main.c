@@ -104,7 +104,10 @@ int count_words(WordCount **wclist, FILE *infile) {
     }
     str[count] = 0;
     if (count > 1) {
-      add_word(wclist, str);
+      int ret = add_word(wclist, str);
+      if (ret != 0) {
+        return 1;
+      }
     }
   }
   return 0;
@@ -189,7 +192,10 @@ int main (int argc, char *argv[]) {
     if (count_mode) {
       total_words += num_words(infile);
     } else {
-      count_words(&word_counts, infile);
+      int ret = count_words(&word_counts, infile);
+      if (ret != 0) {
+        return 1;
+      }
     }
   } else {
     // At least one file specified. Useful functions: fopen(), fclose().
@@ -203,7 +209,10 @@ int main (int argc, char *argv[]) {
       if (count_mode) {
         total_words += num_words(infile);
       } else {
-        count_words(&word_counts, infile);
+        int ret = count_words(&word_counts, infile);
+        if (ret != 0) {
+          return 1;
+        }
       }
       fclose(infile);
     }
