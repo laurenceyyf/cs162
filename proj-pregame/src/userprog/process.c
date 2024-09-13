@@ -119,6 +119,9 @@ static void start_process(void* file_name_) {
     thread_exit();
   }
 
+  uint32_t* argc = 0xbffffff0;
+  memset(argc, 0x1, 1);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -473,7 +476,7 @@ static bool setup_stack(void** esp) {
   if (kpage != NULL) {
     success = install_page(((uint8_t*)PHYS_BASE) - PGSIZE, kpage, true);
     if (success)
-      *esp = PHYS_BASE;
+      *esp = PHYS_BASE - 0x14;
     else
       palloc_free_page(kpage);
   }
