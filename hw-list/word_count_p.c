@@ -89,13 +89,11 @@ void fprint_words(word_count_list_t* wclist, FILE* outfile) {
   if (wclist == NULL || outfile == NULL) {
     return;
   }
-  pthread_mutex_lock(&wclist->lock);
   struct list_elem* e;
   for (e = list_begin(&wclist->lst); e != list_end(&wclist->lst); e = list_next(e)) {
     word_count_t *wc = list_entry(e, word_count_t, elem);
     fprintf(outfile, "%i\t%s\n", wc->count, wc->word);
   }
-  pthread_mutex_unlock(&wclist->lock);
 }
 
 static bool less_list(const struct list_elem* ewc1, const struct list_elem* ewc2, void* aux) {
