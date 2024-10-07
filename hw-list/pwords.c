@@ -32,6 +32,7 @@
 #include "word_count.h"
 #include "word_helpers.h"
 
+<<<<<<< HEAD
 struct count_data {
   word_count_list_t* wclist;
   FILE* infile;
@@ -46,6 +47,8 @@ void* count_words_p(void* threadarg) {
   pthread_exit(NULL);
 }
 
+=======
+>>>>>>> 723c789bdce9bfed94ea2a1db9e60a3690ce4bcc
 /*
  * main - handle command line, spawning one thread per file.
  */
@@ -58,6 +61,7 @@ int main(int argc, char* argv[]) {
     /* Process stdin in a single thread. */
     count_words(&word_counts, stdin);
   } else {
+<<<<<<< HEAD
     int nthreads = argc - 1;
     pthread_t threads[nthreads];
     long t;
@@ -78,6 +82,9 @@ int main(int argc, char* argv[]) {
     for (t = 0; t < nthreads; t++) {
       pthread_join(threads[t], NULL);
     }
+=======
+    /* TODO */
+>>>>>>> 723c789bdce9bfed94ea2a1db9e60a3690ce4bcc
   }
 
   /* Output final result of all threads' work. */
