@@ -134,6 +134,9 @@ int main(unused int argc, unused char* argv[]) {
   if (shell_is_interactive)
     fprintf(stdout, "%d: ", line_num);
 
+  int saved_stdin = dup(STDIN_FILENO);
+  int saved_stdout = dup(STDOUT_FILENO);
+
   while (fgets(line, 4096, stdin)) {
     /* Split our line into words. */
     struct tokens* tokens = tokenize(line);
@@ -147,10 +150,27 @@ int main(unused int argc, unused char* argv[]) {
       char* filepath = tokens_get_token(tokens, 0);
       int tokens_len = tokens_get_length(tokens);
       char** argv = malloc((tokens_len + 1) * sizeof(char*));
-      for (int i = 0; i < tokens_len; i++) {
-        argv[i] = tokens_get_token(tokens, i);
-      }
       argv[tokens_len] = NULL;
+      for (int i = 0; i < tokens_len; i++) {
+        char* token = tokens_get_token(tokens, i);
+        if (strcmp(token, ">") == 0) {
+          i++;
+          char* filename = tokens_get_token(tokens, i);;
+          int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+          dup2(fd, STDOUT_FILENO);
+          continue;
+        }
+        if (strcmp(token, "<") == 0) {
+          i++;
+          char* filename = tokens_get_token(tokens, i);;
+          int fd = open(filename, O_RDONLY);
+          dup2(fd, STDIN_FILENO);
+          free(argv);
+          argv = NULL;
+          continue;
+        }
+        argv[i] = token;
+      }
       if (filepath[0] != '/') {
         char* path_env = getenv("PATH");
         char* save_ptr;
@@ -170,7 +190,10 @@ int main(unused int argc, unused char* argv[]) {
       } else {
         run_child(filepath, argv);
       }
-
+      close(STDIN_FILENO);
+      close(STDOUT_FILENO);
+      dup2(saved_stdin, STDIN_FILENO);
+      dup2(saved_stdout, STDOUT_FILENO);
     }
 
     if (shell_is_interactive)
