@@ -117,11 +117,11 @@ int run_child(char* filepath, char** argv) {
     return -1;
   } else if (p == 0) {
     execv(filepath, argv);
-    exit(0);
+    exit(1);
   } else {
     wait(&status);
   }
-  return 0;
+  return status;
 }
 
 int main(unused int argc, unused char* argv[]) {
@@ -161,7 +161,10 @@ int main(unused int argc, unused char* argv[]) {
           strncpy(path, word, strlen(word));
           path[strlen(word)] = '/';
           strncpy(path + strlen(word) + 1, filepath, strlen(filepath));
-          run_child(path, argv);
+          int status = run_child(path, argv);
+          if (status == 0) {
+            break;
+          }
           word = strtok_r(NULL, ":", &save_ptr);
         }
       } else {
