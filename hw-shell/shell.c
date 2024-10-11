@@ -125,6 +125,8 @@ int run_child_pipe(char* filepath, char** argv, int* pipe_fd, int prev_pipe) {
       dup2(prev_pipe, STDIN_FILENO);
       close(prev_pipe);
     }
+    signal(SIGINT, SIG_DFL);
+    signal(SIGTTOU, SIG_DFL);
     execv(filepath, argv);
     exit(1);
   } else {
@@ -165,6 +167,8 @@ int run_process(char* filepath, char** argv, int* pipe_fd, int prev_pipe) {
 
 int main(unused int argc, unused char* argv[]) {
   init_shell();
+  signal(SIGINT, SIG_IGN);
+  signal(SIGTTOU, SIG_IGN);
 
   static char line[4096];
   int line_num = 0;
