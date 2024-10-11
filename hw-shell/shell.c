@@ -209,8 +209,6 @@ int main(unused int argc, unused char* argv[]) {
           char* filename = tokens_get_token(tokens, i);;
           int fd = open(filename, O_RDONLY);
           dup2(fd, STDIN_FILENO);
-          free(argv);
-          argv = NULL;
           continue;
         }
         if (strcmp(token, "|") == 0) {
