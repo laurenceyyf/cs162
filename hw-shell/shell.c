@@ -123,8 +123,6 @@ int run_child_pipe(char* filepath, char** argv, int* pipe_fd, int prev_pipe) {
     }
     if (prev_pipe != -1) {
       dup2(prev_pipe, STDIN_FILENO);
-      free(argv);
-      argv = NULL;
       close(prev_pipe);
     }
     execv(filepath, argv);
@@ -152,11 +150,11 @@ int run_process(char* filepath, char** argv, int* pipe_fd, int prev_pipe) {
       strncpy(path, word, strlen(word));
       path[strlen(word)] = '/';
       strncpy(path + strlen(word) + 1, filepath, strlen(filepath));
-      status = run_child_pipe(path, argv, pipe_fd, prev_pipe);
-      free(path);
-      if (status == 0) {
-        break;
+      if (access(path, F_OK) == 0) {
+        status = run_child_pipe(path, argv, pipe_fd, prev_pipe);
+        return status;
       }
+      free(path);
       word = strtok_r(NULL, ":", &save_ptr);
     }
   } else {
@@ -193,7 +191,6 @@ int main(unused int argc, unused char* argv[]) {
       char* filepath = tokens_get_token(tokens, 0);
       int tokens_len = tokens_get_length(tokens);
       char** argv = malloc((tokens_len + 1) * sizeof(char*));
-      argv[tokens_len] = NULL;
       int j = 0;
       for (int i = 0; i < tokens_len; i++) {
         char* token = tokens_get_token(tokens, i);
@@ -202,6 +199,7 @@ int main(unused int argc, unused char* argv[]) {
           char* filename = tokens_get_token(tokens, i);;
           int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644);
           dup2(fd, STDOUT_FILENO);
+          close(fd);
           continue;
         }
         if (strcmp(token, "<") == 0) {
@@ -209,6 +207,7 @@ int main(unused int argc, unused char* argv[]) {
           char* filename = tokens_get_token(tokens, i);;
           int fd = open(filename, O_RDONLY);
           dup2(fd, STDIN_FILENO);
+          close(fd);
           continue;
         }
         if (strcmp(token, "|") == 0) {
@@ -225,7 +224,6 @@ int main(unused int argc, unused char* argv[]) {
           close(pipe_fd[0]);
           free(argv);
           argv = malloc((tokens_len - i) * sizeof(char*));
-          argv[tokens_len - i - 1] = NULL;
           j = 0;
           filepath = tokens_get_token(tokens, i + 1);
           continue;
@@ -233,6 +231,7 @@ int main(unused int argc, unused char* argv[]) {
         argv[j] = token;
         j++;
       }
+      argv[j] = NULL;
       int status = run_process(filepath, argv, NULL, prev_pipe);
       if (prev_pipe != -1) {
         close(prev_pipe);
@@ -241,8 +240,6 @@ int main(unused int argc, unused char* argv[]) {
         return -1;
       }
       free(argv);
-      close(STDIN_FILENO);
-      close(STDOUT_FILENO);
       dup2(saved_stdin, STDIN_FILENO);
       dup2(saved_stdout, STDOUT_FILENO);
     }
