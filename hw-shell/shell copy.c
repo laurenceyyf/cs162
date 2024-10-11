@@ -109,58 +109,17 @@ void init_shell() {
   }
 }
 
-int run_child_pipe(char* filepath, char** argv, int* pipe_fd, int prev_pipe) {
+int run_child(char* filepath, char** argv) {
   int status;
   pid_t p = fork();
   if (p < 0) {
     perror("fork");
     return -1;
   } else if (p == 0) {
-    if (pipe_fd != NULL) {
-      close(pipe_fd[0]);
-      dup2(pipe_fd[1], STDOUT_FILENO);
-      close(pipe_fd[1]);
-    }
-    if (prev_pipe != -1) {
-      dup2(prev_pipe, STDIN_FILENO);
-      free(argv);
-      argv = NULL;
-      close(prev_pipe);
-    }
     execv(filepath, argv);
     exit(1);
   } else {
-    if (pipe_fd != NULL) {
-      close(pipe_fd[1]);
-    }
     wait(&status);
-  }
-  return status;
-}
-
-int run_process(char* filepath, char** argv, int* pipe_fd, int prev_pipe) {
-  int status;
-  if (filepath[0] != '/') {
-    char* path_env = getenv("PATH");
-    char* save_ptr;
-    char* path_env_copy = malloc((strlen(path_env) + 1) * sizeof(char));
-    path_env_copy = strcpy(path_env_copy, path_env);
-    char* word = strtok_r(path_env_copy, ":", &save_ptr);
-    while (word != NULL) {
-      int path_len = strlen(word) + 1 + strlen(filepath) + 1;
-      char* path = malloc(path_len * sizeof(char));
-      strncpy(path, word, strlen(word));
-      path[strlen(word)] = '/';
-      strncpy(path + strlen(word) + 1, filepath, strlen(filepath));
-      status = run_child_pipe(path, argv, pipe_fd, prev_pipe);
-      free(path);
-      if (status == 0) {
-        break;
-      }
-      word = strtok_r(NULL, ":", &save_ptr);
-    }
-  } else {
-    status = run_child_pipe(filepath, argv, pipe_fd, prev_pipe);
   }
   return status;
 }
@@ -188,13 +147,10 @@ int main(unused int argc, unused char* argv[]) {
     if (fundex >= 0) {
       cmd_table[fundex].fun(tokens);
     } else {
-      int prev_pipe = -1;
-      int pipe_fd[2] = {-1, -1};
       char* filepath = tokens_get_token(tokens, 0);
       int tokens_len = tokens_get_length(tokens);
       char** argv = malloc((tokens_len + 1) * sizeof(char*));
       argv[tokens_len] = NULL;
-      int j = 0;
       for (int i = 0; i < tokens_len; i++) {
         char* token = tokens_get_token(tokens, i);
         if (strcmp(token, ">") == 0) {
@@ -213,36 +169,27 @@ int main(unused int argc, unused char* argv[]) {
           argv = NULL;
           continue;
         }
-        if (strcmp(token, "|") == 0) {
-          if (pipe(pipe_fd) == -1) {
-            perror("pipe");
-            return -1;
+        argv[i] = token;
+      }
+      if (filepath[0] != '/') {
+        char* path_env = getenv("PATH");
+        char* save_ptr;
+        char* word = strtok_r(path_env, ":", &save_ptr);
+        while (word != NULL) {
+          int path_len = strlen(word) + 1 + strlen(filepath) + 1;
+          char* path = malloc(path_len * sizeof(char));
+          strncpy(path, word, strlen(word));
+          path[strlen(word)] = '/';
+          strncpy(path + strlen(word) + 1, filepath, strlen(filepath));
+          int status = run_child(path, argv);
+          if (status == 0) {
+            break;
           }
-          argv[j] = NULL;
-          int status = run_process(filepath, argv, pipe_fd, prev_pipe);
-          if (status == -1) {
-            return -1;
-          }
-          prev_pipe = dup(pipe_fd[0]);
-          close(pipe_fd[0]);
-          free(argv);
-          argv = malloc((tokens_len - i) * sizeof(char*));
-          argv[tokens_len - i - 1] = NULL;
-          j = 0;
-          filepath = tokens_get_token(tokens, i + 1);
-          continue;
+          word = strtok_r(NULL, ":", &save_ptr);
         }
-        argv[j] = token;
-        j++;
+      } else {
+        run_child(filepath, argv);
       }
-      int status = run_process(filepath, argv, NULL, prev_pipe);
-      if (prev_pipe != -1) {
-        close(prev_pipe);
-      }
-      if (status == -1) {
-        return -1;
-      }
-      free(argv);
       close(STDIN_FILENO);
       close(STDOUT_FILENO);
       dup2(saved_stdin, STDIN_FILENO);
