@@ -96,6 +96,7 @@ void serve_directory(int fd, char* path) {
     http_format_href(buf, path, filename);
     write(fd, buf, len);
     free(buf);
+    dp = readdir(dirp);
   }
   close(dirp);
   /* PART 3 END */
