@@ -55,7 +55,7 @@ void serve_file(int fd, char* path) {
     perror("Failed to open file");
     exit(errno);
   }
-  char buf_file[100];
+  char buf_file[1024];
   ssize_t bytes_read = read(fd_file, buf_file, sizeof(buf_file));
   if (bytes_read == -1) {
     perror("Failed to read file");
