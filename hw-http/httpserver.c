@@ -37,14 +37,39 @@ int server_proxy_port;
  */
 void serve_file(int fd, char* path) {
 
-  /* TODO: PART 2 */
   /* PART 2 BEGIN */
+  struct stat buf;
+  stat(path, &buf);
+  int len = (int)buf.st_size;
+  char* len_str = malloc(11);
+  snprintf(len_str, sizeof(len_str), "%d", len);
 
   http_start_response(fd, 200);
   http_send_header(fd, "Content-Type", http_get_mime_type(path));
-  http_send_header(fd, "Content-Length", "0"); // TODO: change this line too
+  http_send_header(fd, "Content-Length", len_str);
   http_end_headers(fd);
+  free(len_str);
 
+  int fd_file = open(path, O_RDONLY);
+  if (fd_file == -1) {
+    perror("Failed to open file");
+    exit(errno);
+  }
+  char buf_file[100];
+  ssize_t bytes_read = read(fd_file, buf_file, sizeof(buf_file));
+  if (bytes_read == -1) {
+    perror("Failed to read file");
+    exit(errno);
+  }
+  while (bytes_read > 0) {
+    write(fd, buf_file, bytes_read);
+    bytes_read = read(fd_file, buf_file, sizeof(buf_file));
+    if (bytes_read == -1) {
+      perror("Failed to read file");
+      exit(errno);
+    }
+  }
+  close(fd_file);
   /* PART 2 END */
 }
 
@@ -53,17 +78,26 @@ void serve_directory(int fd, char* path) {
   http_send_header(fd, "Content-Type", http_get_mime_type(".html"));
   http_end_headers(fd);
 
-  /* TODO: PART 3 */
   /* PART 3 BEGIN */
 
-  // TODO: Open the directory (Hint: opendir() may be useful here)
+  // Open the directory (Hint: opendir() may be useful here)
+  DIR* dirp = opendir(path);
 
   /**
-   * TODO: For each entry in the directory (Hint: look at the usage of readdir() ),
+   * For each entry in the directory (Hint: look at the usage of readdir() ),
    * send a string containing a properly formatted HTML. (Hint: the http_format_href()
    * function in libhttp.c may be useful here)
    */
-
+  struct dirent* dp = readdir(dirp);
+  while (dp != NULL) {
+    char* filename = dp->d_name;
+    int len = strlen("<a href=\"//\"></a><br/>") + strlen(path) + strlen(filename) * 2 + 1;
+    char* buf = malloc(len);
+    http_format_href(buf, path, filename);
+    write(fd, buf, len);
+    free(buf);
+  }
+  close(dirp);
   /* PART 3 END */
 }
 
@@ -107,17 +141,36 @@ void handle_files_request(int fd) {
   memcpy(path + 2, request->path, strlen(request->path) + 1);
 
   /*
-   * TODO: PART 2 is to serve files. If the file given by `path` exists,
+   * PART 2 is to serve files. If the file given by `path` exists,
    * call serve_file() on it. Else, serve a 404 Not Found error below.
    * The `stat()` syscall will be useful here.
    *
-   * TODO: PART 3 is to serve both files and directories. You will need to
+   * PART 3 is to serve both files and directories. You will need to
    * determine when to call serve_file() or serve_directory() depending
    * on `path`. Make your edits below here in this function.
    */
 
   /* PART 2 & 3 BEGIN */
-
+  struct stat buf;
+  if (stat(path, &buf) == 0) {
+    if (S_ISDIR(buf.st_mode)) {
+      int index_path_len = strlen(path) + strlen("/index.html") + 1;
+      char* index_path = malloc(index_path_len);
+      http_format_index(index_path, path);
+      struct stat index_buf;
+      if (stat(index_path, &index_buf) == 0) {
+        serve_file(fd, index_path);
+      } else {
+        serve_directory(fd, path);
+      }
+      free(index_path);
+    } else {
+      serve_file(fd, path);
+    }
+  } else {
+    http_start_response(fd, 404);
+  }
+  free(path);
   /* PART 2 & 3 END */
 
   close(fd);
@@ -254,8 +307,6 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
   server_address.sin_port = htons(server_port);
 
   /*
-   * TODO: PART 1
-   *
    * Given the socket created above, call bind() to give it
    * an address and a port. Then, call listen() with the socket.
    * An appropriate size of the backlog is 1024, though you may
@@ -263,7 +314,14 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
    */
 
   /* PART 1 BEGIN */
-
+  if (bind(*socket_number, (struct sockaddr*)&server_address, sizeof(server_address)) == -1) {
+    perror("Failed to bind");
+    exit(errno);
+  }
+  if (listen(*socket_number, 1024) == -1) {
+    perror("Failed to listen");
+    exit(errno);
+  }
   /* PART 1 END */
   printf("Listening on port %d...\n", server_port);
 
