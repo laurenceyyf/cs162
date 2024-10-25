@@ -309,6 +309,21 @@ void init_thread_pool(int num_threads, void (*request_handler)(int)) {
 }
 #endif
 
+#ifdef THREADSERVER
+struct thread_server_args {
+  int client_socket_number;
+  void (*request_handler)(int);
+};
+
+/* Helper function for serve_forever() */
+void thread_server_handler(void* args) {
+  struct thread_server_args* arguments = (struct thread_server_args*)args;
+  pthread_detach(pthread_self());
+  arguments->request_handler(arguments->client_socket_number);
+  pthread_exit(0);
+}
+#endif
+
 /*
  * Opens a TCP stream socket on all interfaces with port number PORTNO. Saves
  * the fd number of the server socket in *socket_number. For each accepted
@@ -391,8 +406,6 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
 
 #elif FORKSERVER
     /*
-     * TODO: PART 5
-     *
      * When a client connection has been accepted, a new
      * process is spawned. This child process will send
      * a response to the client. Afterwards, the child
@@ -402,13 +415,21 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
      */
 
     /* PART 5 BEGIN */
-
+    pid_t p = fork();
+    if (p < 0) {
+      perror("Failed to fork");
+      exit(errno);
+    } else if (p == 0) {
+      close(*socket_number);
+      request_handler(client_socket_number);
+      exit(0);
+    } else {
+      close(client_socket_number);
+    }
     /* PART 5 END */
 
 #elif THREADSERVER
     /*
-     * TODO: PART 6
-     *
      * When a client connection has been accepted, a new
      * thread is created. This thread will send a response
      * to the client. The main thread should continue
@@ -417,7 +438,9 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
      */
 
     /* PART 6 BEGIN */
-
+    struct thread_server_args = {client_socket_number, request_handler};
+    pthread_t thread_server;
+    pthread_create(&thread_server, NULL, thread_server_handler, thread_server_args);
     /* PART 6 END */
 #elif POOLSERVER
     /*
