@@ -438,9 +438,9 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
      */
 
     /* PART 6 BEGIN */
-    struct thread_server_args = {client_socket_number, request_handler};
+    struct thread_server_args args = {client_socket_number, request_handler};
     pthread_t thread_server;
-    pthread_create(&thread_server, NULL, thread_server_handler, thread_server_args);
+    pthread_create(&thread_server, NULL, thread_server_handler, &args);
     /* PART 6 END */
 #elif POOLSERVER
     /*
