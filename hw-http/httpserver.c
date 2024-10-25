@@ -178,6 +178,31 @@ void handle_files_request(int fd) {
   return;
 }
 
+struct send_data_args {
+  int src_fd;
+  int dst_fd;
+};
+
+/* Helper function for handle_proxy_request() */
+void send_data(void* args) {
+  struct send_data_args* arguments = (struct send_data_args*)args;
+  char buf[1024];
+  ssize_t bytes_read = read(arguments->src_fd, buf, sizeof(buf));
+  if (bytes_read == -1) {
+    perror("Failed to read file");
+    exit(errno);
+  }
+  while (bytes_read > 0) {
+    write(arguments->dst_fd, buf, bytes_read);
+    bytes_read = read(arguments->src_fd, buf, sizeof(buf));
+    if (bytes_read == -1) {
+      perror("Failed to read file");
+      exit(errno);
+    }
+  }
+  pthread_exit(0);
+}
+
 /*
  * Opens a connection to the proxy target (hostname=server_proxy_hostname and
  * port=server_proxy_port) and relays traffic to/from the stream fd and the
@@ -239,9 +264,17 @@ void handle_proxy_request(int fd) {
     return;
   }
 
-  /* TODO: PART 4 */
   /* PART 4 BEGIN */
-
+  pthread_t client_to_server;
+  pthread_t server_to_client;
+  struct send_data_args client_to_server_args = {fd, target_fd};
+  struct send_data_args server_to_client_args = {target_fd, fd};
+  pthread_create(&client_to_server, NULL, send_data, &client_to_server_args);
+  pthread_create(&server_to_client, NULL, send_data, &server_to_client_args);
+  pthread_join(client_to_server, NULL);
+  pthread_join(server_to_client, NULL);
+  close(fd);
+  close(target_fd);
   /* PART 4 END */
 }
 
