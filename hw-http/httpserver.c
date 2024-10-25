@@ -291,9 +291,11 @@ void* handle_clients(void* void_request_handler) {
    * be joining on it. */
   pthread_detach(pthread_self());
 
-  /* TODO: PART 7 */
   /* PART 7 BEGIN */
-
+  while (1) {
+    int client_socket_number = wq_pop(&work_queue);
+    request_handler(client_socket_number);
+  }
   /* PART 7 END */
 }
 
@@ -302,9 +304,12 @@ void* handle_clients(void* void_request_handler) {
  */
 void init_thread_pool(int num_threads, void (*request_handler)(int)) {
 
-  /* TODO: PART 7 */
   /* PART 7 BEGIN */
-
+  wq_init(&work_queue);
+  for (int i = 0; i < num_threads; i++) {
+    pthread_t t;
+    pthread_create(&t, NULL, handle_clients, request_handler);
+  }
   /* PART 7 END */
 }
 #endif
@@ -442,17 +447,16 @@ void serve_forever(int* socket_number, void (*request_handler)(int)) {
     pthread_t thread_server;
     pthread_create(&thread_server, NULL, thread_server_handler, &args);
     /* PART 6 END */
+
 #elif POOLSERVER
     /*
-     * TODO: PART 7
-     *
      * When a client connection has been accepted, add the
      * client's socket number to the work queue. A thread
      * in the thread pool will send a response to the client.
      */
 
     /* PART 7 BEGIN */
-
+    wq_push(&work_queue, client_socket_number);
     /* PART 7 END */
 #endif
   }
