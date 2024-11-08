@@ -35,13 +35,14 @@ int main() {
 
   int* data1 = mm_malloc(100);
   assert(data1 != NULL);
-  int* data2 = mm_malloc(100);
+  int* data2 = mm_malloc(150);
   assert(data2 != NULL);
+  int* data3 = mm_malloc(200);
+  assert(data3 != NULL);
   mm_free(data1);
-  data1 = mm_malloc(10);
-  assert(data1 != NULL);
-  int* data3 = mm_malloc(10);
-  mm_free(data1);
+  mm_free(data2);
   mm_free(data3);
+  int* data4 = mm_malloc(450);
+  mm_free(data4);
   puts("malloc test successful!");
 }

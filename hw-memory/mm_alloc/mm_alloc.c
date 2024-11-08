@@ -104,14 +104,18 @@ void mm_free(void* ptr) {
     cur->size += (cur->next->size + sizeof(struct mm_meta));
     if (cur->next == tail) {
       tail = cur;
+      cur->next = NULL;
     } else {
       cur->next = cur->next->next;
       cur->next->prev = cur;
     }
-  } else if (cur != head && cur->prev->free == 1) {
+    
+  }
+  if (cur != head && cur->prev->free == 1) {
     cur->prev->size += (cur->size + sizeof(struct mm_meta));
     if (cur == tail) {
       tail = cur->prev;
+      cur->prev->next = NULL;
     } else {
       cur->prev->next = cur->next;
       cur->next->prev = cur->prev;
