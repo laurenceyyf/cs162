@@ -29,7 +29,8 @@ void* mm_malloc(size_t size) {
     new_meta->free = 0;
     new_meta->next = NULL;
     new_meta->prev = NULL;
-    return (void*)(new_meta + sizeof(struct mm_meta));
+    memset((void*)new_meta + sizeof(struct mm_meta), 0, size);
+    return (void*)new_meta + sizeof(struct mm_meta);
   } else {
     struct mm_meta* cur = head;
     while (cur != NULL) {
@@ -39,9 +40,9 @@ void* mm_malloc(size_t size) {
           cur->size = size;
           cur->unused = unused;
           cur->free = 0;
-          memset(cur + sizeof(struct mm_meta), 0, size + unused);
+          memset((void*)cur + sizeof(struct mm_meta), 0, size + unused);
         } else {
-          struct mm_meta* new_meta = (struct mm_meta*)(cur + cur->size + sizeof(struct mm_meta));
+          struct mm_meta* new_meta = (struct mm_meta*)((void*)cur + cur->size + sizeof(struct mm_meta));
           new_meta->size = cur->size - sizeof(struct mm_meta);
           new_meta->unused = 0;
           new_meta->free = 1;
@@ -52,15 +53,15 @@ void* mm_malloc(size_t size) {
           } else {
             tail = new_meta;
           }
-          memset(new_meta + sizeof(struct mm_meta), 0, size);
+          memset((void*)new_meta + sizeof(struct mm_meta), 0, size);
 
           cur->size = size;
           cur->unused = 0;
           cur->free = 0;
           cur->next = new_meta;
-          memset(cur + sizeof(struct mm_meta), 0, size);
+          memset((void*)cur + sizeof(struct mm_meta), 0, size);
         }
-        return (void*)(cur + sizeof(struct mm_meta));
+        return (void*)((void*)cur + sizeof(struct mm_meta));
       } else {
         cur = cur->next;
       }
@@ -86,18 +87,18 @@ void mm_free(void* ptr) {
   cur->size += cur->unused;
   cur->unused = 0;
   if (cur != tail && cur->next->free == 1) {
+    cur->size += (cur->next->size + sizeof(struct mm_meta));
     if (cur->next == tail) {
       tail = cur;
     } else {
-      cur->size += (cur->next->size + sizeof(struct mm_meta));
       cur->next = cur->next->next;
       cur->next->prev = cur;
     }
   } else if (cur != head && cur->prev->free == 1) {
+    cur->prev->size += (cur->size + sizeof(struct mm_meta));
     if (cur == tail) {
       tail = cur->prev;
     } else {
-      cur->prev->size += (cur->size + sizeof(struct mm_meta));
       cur->prev->next = cur->next;
       cur->next->prev = cur->prev;
     }
