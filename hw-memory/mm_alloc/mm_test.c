@@ -39,10 +39,20 @@ int main() {
   assert(data2 != NULL);
   int* data3 = mm_malloc(200);
   assert(data3 != NULL);
+  int* data4 = mm_malloc(300);
+  int* data5 = mm_malloc(400);
+  int* data6 = mm_malloc(500);
+  int* data7 = mm_malloc(600);
+  int* data8 = mm_malloc(700);
   mm_free(data1);
   mm_free(data2);
   mm_free(data3);
-  int* data4 = mm_malloc(450);
   mm_free(data4);
+  mm_free(data5);
+  mm_free(data6);
+  mm_free(data7);
+  mm_free(data8);
+  int* data = mm_malloc(2950);
+  mm_free(data);
   puts("malloc test successful!");
 }

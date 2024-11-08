@@ -53,7 +53,7 @@ void* mm_malloc(size_t size) {
           } else {
             tail = new_meta;
           }
-          memset((void*)new_meta + sizeof(struct mm_meta), 0, size);
+          memset((void*)new_meta + sizeof(struct mm_meta), 0, new_meta->size);
 
           cur->size = size;
           cur->unused = 0;
