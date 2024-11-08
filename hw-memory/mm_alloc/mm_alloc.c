@@ -18,6 +18,9 @@ void* mm_malloc(size_t size) {
   }
 
   if (head == NULL) {
+    if ((intptr_t)size < 0 || (intptr_t)(size + sizeof(struct mm_meta)) < 0) {
+      return NULL;
+    }
     void* vaddr = sbrk(size + sizeof(struct mm_meta));
     if (vaddr == (void*)-1) {
       return NULL;
@@ -63,6 +66,9 @@ void* mm_malloc(size_t size) {
         }
         return (void*)((void*)cur + sizeof(struct mm_meta));
       } else if (cur == tail) {
+        if ((intptr_t)size < 0 || (intptr_t)(size + sizeof(struct mm_meta)) < 0) {
+          return NULL;
+        }
         void* vaddr = sbrk(size + sizeof(struct mm_meta));
         if (vaddr == (void*)-1) {
           return NULL;
@@ -95,6 +101,9 @@ void* mm_realloc(void* ptr, size_t size) {
   } else {
     struct mm_meta* cur = (struct mm_meta*)(ptr - sizeof(struct mm_meta));
     void* new_block = mm_malloc(size);
+    if (new_block == NULL) {
+      return NULL;
+    }
     struct mm_meta* new_meta = (struct mm_meta*)(new_block - sizeof(struct mm_meta));
     if (new_meta->size >= cur->size) {
       memcpy(new_block, ptr, cur->size);
