@@ -85,11 +85,25 @@ void* mm_malloc(size_t size) {
 }
 
 void* mm_realloc(void* ptr, size_t size) {
-  //TODO: Implement realloc
-  if (ptr == NULL) {
+  if (ptr == NULL && size == 0) {
     return NULL;
+  } else if (ptr == NULL) {
+    return mm_malloc(size);
+  } else if (size == 0) {
+    mm_free(ptr);
+    return NULL;
+  } else {
+    struct mm_meta* cur = (struct mm_meta*)(ptr - sizeof(struct mm_meta));
+    void* new_block = mm_malloc(size);
+    struct mm_meta* new_meta = (struct mm_meta*)(new_block - sizeof(struct mm_meta));
+    if (new_meta->size >= cur->size) {
+      memcpy(new_block, ptr, cur->size);
+    } else {
+      memcpy(new_block, ptr, new_meta->size);
+    }
+    mm_free(ptr);
+    return new_block;
   }
-  return (void*)(ptr+size);
 }
 
 void mm_free(void* ptr) {
