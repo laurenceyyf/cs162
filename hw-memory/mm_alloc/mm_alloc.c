@@ -29,6 +29,7 @@ void* mm_malloc(size_t size) {
     new_meta->free = 0;
     new_meta->next = NULL;
     new_meta->prev = NULL;
+    return (void*)(new_meta + sizeof(struct mm_meta));
   } else {
     struct mm_meta* cur = head;
     while (cur != NULL) {
