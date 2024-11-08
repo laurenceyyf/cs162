@@ -47,16 +47,16 @@ void* mm_malloc(size_t size) {
           new_meta->free = 1;
           new_meta->prev = cur;
           new_meta->next = cur->next;
+          if (cur != tail) {
+            new_meta->next->prev = new_meta;
+          } else {
+            tail = new_meta;
+          }
           memset(new_meta + sizeof(struct mm_meta), 0, size);
 
           cur->size = size;
           cur->unused = 0;
           cur->free = 0;
-          if (cur != tail) {
-            cur->next->next->prev = new_meta;
-          } else {
-            tail = new_meta;
-          }
           cur->next = new_meta;
           memset(cur + sizeof(struct mm_meta), 0, size);
         }
@@ -71,13 +71,36 @@ void* mm_malloc(size_t size) {
 
 void* mm_realloc(void* ptr, size_t size) {
   //TODO: Implement realloc
-  ptr = NULL;
-  size = 0;
+  if (ptr == NULL) {
+    return NULL;
+  }
   return (void*)(ptr+size);
 }
 
 void mm_free(void* ptr) {
-  //TODO: Implement free
-  ptr = NULL;
-  if (ptr == NULL) return;
+  if (ptr == NULL) {
+    return;
+  }
+  struct mm_meta* cur = (struct mm_meta*)(ptr - sizeof(struct mm_meta));
+  cur->free = 1;
+  cur->size += cur->unused;
+  cur->unused = 0;
+  if (cur != tail && cur->next->free == 1) {
+    if (cur->next == tail) {
+      tail = cur;
+    } else {
+      cur->size += (cur->next->size + sizeof(struct mm_meta));
+      cur->next = cur->next->next;
+      cur->next->prev = cur;
+    }
+  } else if (cur != head && cur->prev->free == 1) {
+    if (cur == tail) {
+      tail = cur->prev;
+    } else {
+      cur->prev->size += (cur->size + sizeof(struct mm_meta));
+      cur->prev->next = cur->next;
+      cur->next->prev = cur->prev;
+    }
+  }
+  return;
 }
