@@ -34,8 +34,8 @@ void* mm_malloc(size_t size) {
   } else {
     struct mm_meta* cur = head;
     while (cur != NULL) {
-      if (cur->size >= size + sizeof(struct mm_meta) && cur->free == 1) {
-        size_t unused = cur->size - size - sizeof(struct mm_meta);
+      if (cur->size >= size && cur->free == 1) {
+        size_t unused = cur->size - size;
         if (unused <= sizeof(struct mm_meta)) {
           cur->size = size;
           cur->unused = unused;

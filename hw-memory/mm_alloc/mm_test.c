@@ -37,5 +37,9 @@ int main() {
   assert(data != NULL);
   data[0] = 0x162;
   mm_free(data);
+  data = mm_malloc(sizeof(int));
+  assert(data != NULL);
+  assert(data[0] == 0);
+  mm_free(data);
   puts("malloc test successful!");
 }
