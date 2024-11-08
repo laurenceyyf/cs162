@@ -62,6 +62,20 @@ void* mm_malloc(size_t size) {
           memset((void*)cur + sizeof(struct mm_meta), 0, size);
         }
         return (void*)((void*)cur + sizeof(struct mm_meta));
+      } else if (cur == tail) {
+        void* vaddr = sbrk(size + sizeof(struct mm_meta));
+        if (vaddr == (void*)-1) {
+          return NULL;
+        }
+        struct mm_meta* new_meta = (struct mm_meta*)vaddr;
+        tail = new_meta;
+        new_meta->size = size;
+        new_meta->free = 0;
+        new_meta->next = NULL;
+        new_meta->prev = cur;
+        cur->next = new_meta;
+        memset((void*)new_meta + sizeof(struct mm_meta), 0, size);
+        return (void*)new_meta + sizeof(struct mm_meta);
       } else {
         cur = cur->next;
       }
