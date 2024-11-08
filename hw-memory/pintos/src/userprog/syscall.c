@@ -1,8 +1,10 @@
 #include "userprog/syscall.h"
+#include "userprog/pagedir.h"
 #include <stdio.h>
 #include <string.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
+#include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "filesys/filesys.h"
@@ -11,6 +13,7 @@
 static void syscall_handler(struct intr_frame*);
 
 void syscall_init(void) { intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall"); }
+static bool install_page(void* upage, void* kpage, bool writable);
 
 void syscall_exit(int status) {
   printf("%s: exit(%d)\n", thread_current()->name, status);
@@ -76,6 +79,48 @@ static void syscall_close(int fd) {
   }
 }
 
+static void* syscall_sbrk(intptr_t increment) {
+  struct thread* t = thread_current();
+  void* old_brk = t->heap_brk;
+  t->heap_brk += increment;
+  if (t->heap_brk > pg_round_up(old_brk)) {
+    uint8_t* kpage;
+    bool success = false;
+    for (void* upage = pg_round_up(old_brk); upage < pg_round_up(t->heap_brk); upage += PGSIZE) {
+      kpage = palloc_get_page(PAL_USER | PAL_ZERO);
+      if (kpage != NULL) {
+        success = install_page(upage, kpage, true);
+      }
+      if (kpage == NULL || !success) {
+        for (void* upage_ = pg_round_up(old_brk); upage_ < upage; upage_ += PGSIZE) {
+          kpage = pagedir_get_page(t->pagedir, upage_);
+          pagedir_clear_page(t->pagedir, upage_);
+          palloc_free_page(kpage);
+        }
+        t->heap_brk = old_brk;
+        return (void*)-1;
+      }
+    }
+  } else if (t->heap_brk <= pg_round_down(old_brk)) {
+    uint8_t* kpage;
+    for (void* upage = pg_round_down(old_brk); upage >= pg_round_up(t->heap_brk); upage -= PGSIZE) {
+      kpage = pagedir_get_page(t->pagedir, upage);
+      pagedir_clear_page(t->pagedir, upage);
+      palloc_free_page(kpage);
+    }
+  }
+  return old_brk;
+}
+
+static bool install_page(void* upage, void* kpage, bool writable) {
+  struct thread* t = thread_current();
+
+  /* Verify that there's not already a page at that virtual
+     address, then map our page there. */
+  return (pagedir_get_page(t->pagedir, upage) == NULL &&
+          pagedir_set_page(t->pagedir, upage, kpage, writable));
+}
+
 static void syscall_handler(struct intr_frame* f) {
   uint32_t* args = (uint32_t*)f->esp;
   struct thread* t = thread_current();
@@ -109,6 +154,11 @@ static void syscall_handler(struct intr_frame* f) {
     case SYS_CLOSE:
       validate_buffer_in_user_region(&args[1], sizeof(uint32_t));
       syscall_close((int)args[1]);
+      break;
+
+    case SYS_SBRK:
+      validate_buffer_in_user_region(&args[1], sizeof(uint32_t));
+      f->eax = (uint32_t)syscall_sbrk((intptr_t)args[1]);
       break;
 
     default:
