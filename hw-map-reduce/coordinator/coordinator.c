@@ -62,10 +62,9 @@ int* submit_job_1_svc(submit_job_request* argp, struct svc_req* rqstp) {
 
   printf("Received submit job request\n");
 
-  /* TODO */
   struct job* job = malloc(sizeof(struct job));
 
-  /* Initialize app*/
+  /* Initialize app */
   if (get_app(argp->app).name == NULL) {
     result = -1;
     return &result;
@@ -88,7 +87,8 @@ int* submit_job_1_svc(submit_job_request* argp, struct svc_req* rqstp) {
 
   /* Initialize args */
   job->args.args_len = argp->args.args_len;
-  job->args.args_val = strdup(argp->args.args_val);
+  job->args.args_val = malloc(job->args.args_len * sizeof(char));
+  strncpy(job->args.args_val, argp->args.args_val, job->args.args_len);
 
   /* Initialize map */
   job->n_map = argp->files.files_len;
@@ -98,6 +98,7 @@ int* submit_job_1_svc(submit_job_request* argp, struct svc_req* rqstp) {
   }
   job->running_map_queue = NULL;
   job->running_map_times = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, NULL);
+   printf("Initialize map\n");
 
   /* Initialize reduce */
   job->n_reduce = argp->n_reduce;
@@ -107,6 +108,7 @@ int* submit_job_1_svc(submit_job_request* argp, struct svc_req* rqstp) {
   }
   job->running_reduce_queue = NULL;
   job->running_reduce_times = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, NULL);
+   printf("Initialize reduce\n");
 
   /* Initialize status */
   job->done = false;
@@ -135,12 +137,11 @@ poll_job_reply* poll_job_1_svc(int* argp, struct svc_req* rqstp) {
 
   printf("Received poll job request\n");
 
-  /* TODO */
   int job_id = *argp;
   struct job* job = g_hash_table_lookup(state->job_table, GINT_TO_POINTER(job_id));
 
   if (job == NULL) {
-    result.done = false;
+    result.done = true;
     result.failed = false;
     result.invalid_job_id = true;
   } else {
@@ -158,7 +159,6 @@ get_task_reply* get_task_1_svc(void* argp, struct svc_req* rqstp) {
 
   printf("Received get task request\n");
   
-  /* TODO */
   /* Initialize result */
   result.job_id = -1;
   result.task = -1;
@@ -273,7 +273,6 @@ void* finish_task_1_svc(finish_task_request* argp, struct svc_req* rqstp) {
 
   printf("Received finish task request\n");
 
-  /* TODO */
   int job_id = argp->job_id;
   struct job* job = g_hash_table_lookup(state->job_table, GINT_TO_POINTER(job_id));
   int task_id = argp->task;

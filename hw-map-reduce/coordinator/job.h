@@ -19,7 +19,7 @@ struct job {
 	char* app;
 	struct {
 		u_int args_len;
-		char *args_val;
+		char* args_val;
 	} args;
     int n_map;
     GList* map_queue;
