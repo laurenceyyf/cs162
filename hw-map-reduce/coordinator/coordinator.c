@@ -176,6 +176,7 @@ get_task_reply* get_task_1_svc(void* argp, struct svc_req* rqstp) {
     return &result;
   }
 
+  /* Run next job if the current job has no tasks to run */
   GList* cur_job_elem = g_list_first(state->job_queue);
   while (cur_job_elem != NULL) {
     int job_id = GPOINTER_TO_INT(cur_job_elem->data);
@@ -223,6 +224,9 @@ get_task_reply* get_task_1_svc(void* argp, struct svc_req* rqstp) {
           cur_map_elem = cur_map_elem->next;
         }
       }
+      if (job->map_queue != NULL) {
+        continue;
+      }
     } else if (job->reduce_queue != NULL) {
       /* Pop the first reduce in reduce_queue */
       GList* first_reduce_elem = g_list_first(job->reduce_queue);
@@ -264,6 +268,9 @@ get_task_reply* get_task_1_svc(void* argp, struct svc_req* rqstp) {
         } else {
           cur_reduce_elem = cur_reduce_elem->next;
         }
+      }
+      if (job->reduce_queue != NULL) {
+        continue;
       }
     }
     cur_job_elem = cur_job_elem->next;
