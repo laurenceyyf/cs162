@@ -24,7 +24,9 @@
 #include <sys/stat.h>
 
 typedef struct {
-  /* TODO */
+  int next_job_id;       /* Next available job_id, initialized to 0 */
+  GList* job_queue;      /* Queue of all submitted jobs, FCFS */
+  GHashTable* job_table; /* Maps job_id to job */
 } coordinator;
 
 void coordinator_init(coordinator** coord_ptr);
