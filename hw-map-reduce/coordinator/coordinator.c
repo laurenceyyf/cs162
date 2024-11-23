@@ -176,92 +176,97 @@ get_task_reply* get_task_1_svc(void* argp, struct svc_req* rqstp) {
     return &result;
   }
 
-  GList* first_job_elem = g_list_first(state->job_queue);
-  int job_id = GPOINTER_TO_INT(first_job_elem->data);
-  struct job* job = g_hash_table_lookup(state->job_table, GINT_TO_POINTER(job_id));
+  GList* cur_job_elem = g_list_first(state->job_queue);
+  while (cur_job_elem != NULL) {
+    int job_id = GPOINTER_TO_INT(cur_job_elem->data);
+    struct job* job = g_hash_table_lookup(state->job_table, GINT_TO_POINTER(job_id));
 
-  if (job->map_queue != NULL) {
-    /* Pop the first map in map_queue */
-    GList* first_map_elem = g_list_first(job->map_queue);
-    int task_id = GPOINTER_TO_INT(first_map_elem->data);
-    job->map_queue = g_list_remove(job->map_queue, GINT_TO_POINTER(task_id));
+    if (job->map_queue != NULL) {
+      /* Pop the first map in map_queue */
+      GList* first_map_elem = g_list_first(job->map_queue);
+      int task_id = GPOINTER_TO_INT(first_map_elem->data);
+      job->map_queue = g_list_remove(job->map_queue, GINT_TO_POINTER(task_id));
 
-    /* Add map to the end of running_map_queue and running_map_times */
-    job->running_map_queue = g_list_append(job->running_map_queue, GINT_TO_POINTER(task_id));
-    time_t* cur_time = malloc(sizeof(time_t));
-    *cur_time = time(NULL);
-    g_hash_table_insert(job->running_map_times, GINT_TO_POINTER(task_id), cur_time);
+      /* Add map to the end of running_map_queue and running_map_times */
+      job->running_map_queue = g_list_append(job->running_map_queue, GINT_TO_POINTER(task_id));
+      time_t* cur_time = malloc(sizeof(time_t));
+      *cur_time = time(NULL);
+      g_hash_table_insert(job->running_map_times, GINT_TO_POINTER(task_id), cur_time);
 
-    /* Update result */
-    result.job_id = job_id;
-    result.task = task_id;
-    result.file = job->files[task_id];
-    result.output_dir = job->output_dir;
-    result.app = job->app;
-    result.n_reduce = job->n_reduce;
-    result.n_map = job->n_map;
-    result.reduce = false;
-    result.wait = false;
-    result.args.args_len = job->args.args_len;
-    result.args.args_val = job->args.args_val;
-  } else if (job->running_map_queue != NULL) {
-    /* Read the first map in running_map_queue and read its start time from running_map_times */
-    GList* cur_map_elem = g_list_first(job->running_map_queue);
-    while (cur_map_elem != NULL) {
-      int task_id = GPOINTER_TO_INT(cur_map_elem->data);
-      time_t* start_time = g_hash_table_lookup(job->running_map_times, GINT_TO_POINTER(task_id));
-      time_t cur_time = time(NULL);
+      /* Update result */
+      result.job_id = job_id;
+      result.task = task_id;
+      result.file = job->files[task_id];
+      result.output_dir = job->output_dir;
+      result.app = job->app;
+      result.n_reduce = job->n_reduce;
+      result.n_map = job->n_map;
+      result.reduce = false;
+      result.wait = false;
+      result.args.args_len = job->args.args_len;
+      result.args.args_val = job->args.args_val;
+      break;
+    } else if (job->running_map_queue != NULL) {
+      /* Read the first map in running_map_queue and read its start time from running_map_times */
+      GList* cur_map_elem = g_list_first(job->running_map_queue);
+      while (cur_map_elem != NULL) {
+        int task_id = GPOINTER_TO_INT(cur_map_elem->data);
+        time_t* start_time = g_hash_table_lookup(job->running_map_times, GINT_TO_POINTER(task_id));
+        time_t cur_time = time(NULL);
 
-      /* Remove map from running_map_queue and running_map_times and add it to map_queue */
-      if (cur_time >= *start_time + TASK_TIMEOUT_SECS) {
-        g_hash_table_remove(job->running_map_times, GINT_TO_POINTER(task_id));
-        job->running_map_queue = g_list_remove(job->running_map_queue, GINT_TO_POINTER(task_id));
-        job->map_queue = g_list_append(job->map_queue, GINT_TO_POINTER(task_id));
-      } else {
-        cur_map_elem = cur_map_elem->next;
+        /* Remove map from running_map_queue and running_map_times and add it to map_queue */
+        if (cur_time >= *start_time + TASK_TIMEOUT_SECS) {
+          g_hash_table_remove(job->running_map_times, GINT_TO_POINTER(task_id));
+          job->running_map_queue = g_list_remove(job->running_map_queue, GINT_TO_POINTER(task_id));
+          job->map_queue = g_list_append(job->map_queue, GINT_TO_POINTER(task_id));
+        } else {
+          cur_map_elem = cur_map_elem->next;
+        }
+      }
+    } else if (job->reduce_queue != NULL) {
+      /* Pop the first reduce in reduce_queue */
+      GList* first_reduce_elem = g_list_first(job->reduce_queue);
+      int task_id = GPOINTER_TO_INT(first_reduce_elem->data);
+      job->reduce_queue = g_list_remove(job->reduce_queue, GINT_TO_POINTER(task_id));
+
+      /* Add reduce to the end of running_reduce_queue and running_reduce_times */
+      job->running_reduce_queue = g_list_append(job->running_reduce_queue, GINT_TO_POINTER(task_id));
+      time_t* cur_time = malloc(sizeof(time_t));
+      *cur_time = time(NULL);
+      g_hash_table_insert(job->running_reduce_times, GINT_TO_POINTER(task_id), cur_time);
+
+      /* Update result */
+      result.job_id = job_id;
+      result.task = task_id;
+      result.file = "";
+      result.output_dir = job->output_dir;
+      result.app = job->app;
+      result.n_reduce = job->n_reduce;
+      result.n_map = job->n_map;
+      result.reduce = true;
+      result.wait = false;
+      result.args.args_len = job->args.args_len;
+      result.args.args_val = job->args.args_val;
+      break;
+    } else if (job->running_reduce_queue != NULL) {
+      /* Read the first reduce in running_reduce_queue and read its start time from running_reduce_times */
+      GList* cur_reduce_elem = g_list_first(job->running_reduce_queue);
+      while (cur_reduce_elem != NULL) {
+        int task_id = GPOINTER_TO_INT(cur_reduce_elem->data);
+        time_t* start_time = g_hash_table_lookup(job->running_reduce_times, GINT_TO_POINTER(task_id));
+        time_t cur_time = time(NULL);
+
+        /* Remove map from running_map_queue and running_map_times and add it to map_queue */
+        if (cur_time >= *start_time + TASK_TIMEOUT_SECS) {
+          g_hash_table_remove(job->running_reduce_times, GINT_TO_POINTER(task_id));
+          job->running_reduce_queue = g_list_remove(job->running_reduce_queue, GINT_TO_POINTER(task_id));
+          job->reduce_queue = g_list_append(job->reduce_queue, GINT_TO_POINTER(task_id));
+        } else {
+          cur_reduce_elem = cur_reduce_elem->next;
+        }
       }
     }
-  } else if (job->reduce_queue != NULL) {
-    /* Pop the first reduce in reduce_queue */
-    GList* first_reduce_elem = g_list_first(job->reduce_queue);
-    int task_id = GPOINTER_TO_INT(first_reduce_elem->data);
-    job->reduce_queue = g_list_remove(job->reduce_queue, GINT_TO_POINTER(task_id));
-
-    /* Add reduce to the end of running_reduce_queue and running_reduce_times */
-    job->running_reduce_queue = g_list_append(job->running_reduce_queue, GINT_TO_POINTER(task_id));
-    time_t* cur_time = malloc(sizeof(time_t));
-    *cur_time = time(NULL);
-    g_hash_table_insert(job->running_reduce_times, GINT_TO_POINTER(task_id), cur_time);
-
-    /* Update result */
-    result.job_id = job_id;
-    result.task = task_id;
-    result.file = "";
-    result.output_dir = job->output_dir;
-    result.app = job->app;
-    result.n_reduce = job->n_reduce;
-    result.n_map = job->n_map;
-    result.reduce = true;
-    result.wait = false;
-    result.args.args_len = job->args.args_len;
-    result.args.args_val = job->args.args_val;
-  } else if (job->running_reduce_queue != NULL) {
-    /* Read the first reduce in running_reduce_queue and read its start time from running_reduce_times */
-    GList* cur_reduce_elem = g_list_first(job->running_reduce_queue);
-    while (cur_reduce_elem != NULL) {
-      int task_id = GPOINTER_TO_INT(cur_reduce_elem->data);
-      time_t* start_time = g_hash_table_lookup(job->running_reduce_times, GINT_TO_POINTER(task_id));
-      time_t cur_time = time(NULL);
-
-      /* Remove map from running_map_queue and running_map_times and add it to map_queue */
-      if (cur_time >= *start_time + TASK_TIMEOUT_SECS) {
-        g_hash_table_remove(job->running_reduce_times, GINT_TO_POINTER(task_id));
-        job->running_reduce_queue = g_list_remove(job->running_reduce_queue, GINT_TO_POINTER(task_id));
-        job->reduce_queue = g_list_append(job->reduce_queue, GINT_TO_POINTER(task_id));
-      } else {
-        cur_reduce_elem = cur_reduce_elem->next;
-      }
-    }
+    cur_job_elem = cur_job_elem->next;
   }
 
   return &result;
