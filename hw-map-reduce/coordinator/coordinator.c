@@ -220,11 +220,11 @@ get_task_reply* get_task_1_svc(void* argp, struct svc_req* rqstp) {
           g_hash_table_remove(job->running_map_times, GINT_TO_POINTER(task_id));
           job->running_map_queue = g_list_remove(job->running_map_queue, GINT_TO_POINTER(task_id));
           job->map_queue = g_list_append(job->map_queue, GINT_TO_POINTER(task_id));
-        } else {
-          cur_map_elem = cur_map_elem->next;
         }
+        cur_map_elem = cur_map_elem->next;
       }
       if (job->map_queue != NULL) {
+        cur_job_elem = cur_job_elem->next;
         continue;
       }
     } else if (job->reduce_queue != NULL) {
@@ -265,15 +265,14 @@ get_task_reply* get_task_1_svc(void* argp, struct svc_req* rqstp) {
           g_hash_table_remove(job->running_reduce_times, GINT_TO_POINTER(task_id));
           job->running_reduce_queue = g_list_remove(job->running_reduce_queue, GINT_TO_POINTER(task_id));
           job->reduce_queue = g_list_append(job->reduce_queue, GINT_TO_POINTER(task_id));
-        } else {
-          cur_reduce_elem = cur_reduce_elem->next;
         }
+        cur_reduce_elem = cur_reduce_elem->next;
       }
       if (job->reduce_queue != NULL) {
+        cur_job_elem = cur_job_elem->next;
         continue;
       }
     }
-    cur_job_elem = cur_job_elem->next;
   }
 
   return &result;
